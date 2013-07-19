@@ -1,0 +1,101 @@
+#!/usr/bin/env bash
+
+set -e
+
+BP_NGINX='https://github.com/mikeotoole/nginx-buildpack'
+BP_RUBY='https://github.com/heroku/heroku-buildpack-ruby'
+
+BUILD_DIR=$1
+CACHE_DIR=$2
+
+function invoke_builpack() {
+  BUILDPACK=$1
+  BUILD_DIR=$2
+  CACHE_DIR=$3
+
+  dir=$(mktemp -t buildpackXXXXX)
+  rm -rf $dir
+
+  url=${BUILDPACK%#*}
+  branch=${BUILDPACK#*#}
+
+  if [ "$branch" == "$url" ]; then
+    branch=""
+  fi
+
+  if [ "$url" != "" ]; then
+    echo "=====> Downloading Buildpack: $url"
+
+    if [[ "$url" =~ \.tgz$ ]]; then
+      mkdir -p "$dir"
+      curl -s "$url" | tar xvz -C "$dir" >/dev/null 2>&1
+    else
+      git clone $url $dir >/dev/null 2>&1
+    fi
+    cd $dir
+
+    if [ "$branch" != "" ]; then
+      git checkout $branch >/dev/null 2>&1
+    fi
+
+    # we'll get errors later if these are needed and don't exist
+    chmod -f +x $dir/bin/{detect,compile,release} || true
+
+    framework=$($dir/bin/detect "$BUILD_DIR")
+
+    if [ $? == 0 ]; then
+      echo "=====> Detected Framework: $framework"
+      $dir/bin/compile "$BUILD_DIR" "$CACHE_DIR"
+
+      if [ $? != 0 ]; then
+        exit 1
+      fi
+
+      if [ -x $dir/bin/release ]; then
+        $dir/bin/release "$BUILD_DIR" > "$BUILD_DIR/last_pack_release.out"
+      fi
+    fi
+  fi
+}
+
+unset GIT_DIR
+
+invoke_builpack "$BP_NGINX" "$BUILD_DIR" "$CACHE_DIR"
+
+echo "-----> rails-unicorn-nginx: Injecting Unicorn gem"
+if ! ( grep --quiet -E "(\"|')unicorn(\"|')" "$1/Gemfile" ); then
+  echo "gem 'unicorn'" >> "$1/Gemfile"
+fi
+
+if [ -e $1/config/unicorn.rb ]; then
+  echo "-----> rails-unicorn-nginx: WARNING! Overwriting your unicorn.rb"
+fi
+cat << EOF > "$1/config/unicorn.rb"
+require 'fileutils'
+
+listen '/tmp/nginx.socket'
+worker_processes Integer(ENV["WEB_CONCURRENCY"] || 5)
+timeout 15
+preload_app true
+
+before_fork do |server, worker|
+  FileUtils.touch('/tmp/app-initialized')
+
+  Signal.trap 'TERM' do
+    puts 'Unicorn master intercepting TERM and sending myself QUIT instead'
+    Process.kill 'QUIT', Process.pid
+  end
+
+  defined?(ActiveRecord::Base) and ActiveRecord::Base.connection.disconnect!
+end
+
+after_fork do |server, worker|
+  Signal.trap 'TERM' do
+    puts 'Unicorn worker intercepting TERM and doing nothing. Wait for master to send QUIT'
+  end
+
+  defined?(ActiveRecord::Base) and ActiveRecord::Base.establish_connection()
+end
+EOF
+
+invoke_builpack "$BP_RUBY" "$BUILD_DIR" "$CACHE_DIR"

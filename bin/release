@@ -1,0 +1,7 @@
+#!/usr/bin/env bash
+
+cat << EOF
+---
+default_process_types:
+  web: bin/start-nginx bundle exec unicorn -c config/unicorn.rb
+EOF

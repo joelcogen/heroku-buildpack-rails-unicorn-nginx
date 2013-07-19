@@ -1,0 +1,4 @@
+#!/usr/bin/env bash
+
+echo "rails-unicorn-nginx"
+exit 0
