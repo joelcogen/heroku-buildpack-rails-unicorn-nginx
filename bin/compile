@@ -63,7 +63,7 @@ unset GIT_DIR
 invoke_builpack "$BP_NGINX" "$BUILD_DIR" "$CACHE_DIR"
 
 echo "-----> rails-unicorn-nginx: Injecting Unicorn gem"
-if ! ( grep --quiet -E "(\"|')unicorn(\"|')" "$1/Gemfile" ); then
+if ! ( grep --quiet -E "(^|\s)unicorn(\s|$)" "$1/Gemfile.lock" ); then
   echo "gem 'unicorn'" >> "$1/Gemfile"
 fi
 
