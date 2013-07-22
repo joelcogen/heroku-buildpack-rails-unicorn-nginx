@@ -60,11 +60,9 @@ function invoke_builpack() {
 
 unset GIT_DIR
 
-invoke_builpack "$BP_NGINX" "$BUILD_DIR" "$CACHE_DIR"
-
-echo "-----> rails-unicorn-nginx: Injecting Unicorn gem"
-if ! ( grep --quiet -E "(^|\s)unicorn(\s|$)" "$1/Gemfile.lock" ); then
-  echo "gem 'unicorn'" >> "$1/Gemfile"
+if ! ( grep --quiet " unicorn " "$1/Gemfile.lock" ); then
+  echo "-----> rails-unicorn-nginx: ERROR! Please add unicorn to your Gemfile"
+  exit 1
 fi
 
 if [ -e $1/config/unicorn.rb ]; then
@@ -98,4 +96,5 @@ after_fork do |server, worker|
 end
 EOF
 
+invoke_builpack "$BP_NGINX" "$BUILD_DIR" "$CACHE_DIR"
 invoke_builpack "$BP_RUBY" "$BUILD_DIR" "$CACHE_DIR"
