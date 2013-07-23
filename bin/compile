@@ -60,15 +60,15 @@ function invoke_builpack() {
 
 unset GIT_DIR
 
-if ! ( grep --quiet " unicorn " "$1/Gemfile.lock" ); then
+if ! ( grep --quiet " unicorn " "$BUILD_DIR/Gemfile.lock" ); then
   echo "-----> rails-unicorn-nginx: ERROR! Please add unicorn to your Gemfile"
   exit 1
 fi
 
-if [ -e $1/config/unicorn.rb ]; then
+if [ -e "$BUILD_DIR/config/unicorn.rb" ]; then
   echo "-----> rails-unicorn-nginx: WARNING! Overwriting your unicorn.rb"
 fi
-cat << EOF > "$1/config/unicorn.rb"
+cat << EOF > "$BUILD_DIR/config/unicorn.rb"
 require 'fileutils'
 
 listen '/tmp/nginx.socket'
