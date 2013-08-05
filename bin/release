@@ -3,6 +3,9 @@
 cat << EOF
 ---
 default_process_types:
-  web: bin/start-nginx bundle exec unicorn -c config/unicorn.rb
-  console: bin/rails console
+  web: "bin/start-nginx bundle exec unicorn -c config/unicorn.rb"
+  console: "bin/rails console"
+  worker: "bundle exec rake jobs:work"
+addons:
+  - "heroku-postgresql:dev"
 EOF
