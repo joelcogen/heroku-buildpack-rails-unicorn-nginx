@@ -7,11 +7,13 @@ BP_RUBY='https://github.com/heroku/heroku-buildpack-ruby'
 
 BUILD_DIR=$1
 CACHE_DIR=$2
+ENV_DIR=$3
 
 function invoke_builpack() {
   BUILDPACK=$1
   BUILD_DIR=$2
   CACHE_DIR=$3
+  ENV_DIR=$4
 
   dir=$(mktemp -t buildpackXXXXX)
   rm -rf $dir
@@ -45,7 +47,7 @@ function invoke_builpack() {
 
     if [ $? == 0 ]; then
       echo "=====> Detected Framework: $framework"
-      $dir/bin/compile "$BUILD_DIR" "$CACHE_DIR"
+      $dir/bin/compile "$BUILD_DIR" "$CACHE_DIR" "$ENV_DIR"
 
       if [ $? != 0 ]; then
         exit 1
@@ -96,5 +98,5 @@ after_fork do |server, worker|
 end
 EOF
 
-invoke_builpack "$BP_NGINX" "$BUILD_DIR" "$CACHE_DIR"
-invoke_builpack "$BP_RUBY" "$BUILD_DIR" "$CACHE_DIR"
+invoke_builpack "$BP_NGINX" "$BUILD_DIR" "$CACHE_DIR" "$ENV_DIR"
+invoke_builpack "$BP_RUBY" "$BUILD_DIR" "$CACHE_DIR" "$ENV_DIR"
